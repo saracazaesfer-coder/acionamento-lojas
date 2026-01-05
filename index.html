@@ -2,91 +2,346 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Monitoramento RD - Farmácias Isoladas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta Farmácias Isoladas - RD</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f9; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .container { max-width: 500px; width: 90%; background: white; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); overflow: hidden; border-top: 6px solid #003366; }
-        .header { background-color: #003366; color: white; padding: 20px; text-align: center; }
-        .content { padding: 25px; text-align: center; }
-        label { display: block; text-align: left; font-weight: bold; margin-bottom: 5px; color: #333; }
-        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; margin-bottom: 15px; box-sizing: border-box; font-size: 16px; }
-        .btn-search { width: 100%; padding: 12px; border: none; border-radius: 6px; background-color: #003366; color: white; font-weight: bold; cursor: pointer; }
-        .btn-email { width: 100%; padding: 12px; border: none; border-radius: 6px; background-color: #28a745; color: white; font-weight: bold; cursor: pointer; margin-top: 15px; display: none; }
-        .result-box { margin-top: 20px; padding: 15px; background: #f9f9f9; border-left: 4px solid #003366; text-align: left; display: none; font-size: 14px; line-height: 1.6; }
-        .status-msg { margin-top: 10px; font-size: 13px; font-weight: bold; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; width: 100%; max-width: 600px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: #003366; color: white; padding: 20px; text-align: center; }
+        .content { padding: 25px; }
+        .input-group { margin-bottom: 20px; text-align: center; }
+        input { width: 80%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 18px; text-align: center; outline: none; transition: 0.3s; }
+        input:focus { border-color: #003366; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-bottom: 10px; transition: 0.3s; }
+        .btn-consultar { background: #003366; color: white; }
+        .btn-consultar:hover { background: #002244; }
+        .btn-email { background: #28a745; color: white; display: none; }
+        .btn-email:hover { background: #218838; }
+        .resultado { margin-top: 20px; padding: 15px; border-left: 5px solid #003366; background: #f8f9fa; display: none; border-radius: 4px; }
+        .resultado p { margin: 8px 0; color: #333; font-size: 15px; }
+        .erro { color: #d9534f; font-weight: bold; text-align: center; margin-top: 15px; display: none; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header"><h2>📡 Farmácias Isoladas</h2></div>
+<div class="card">
+    <div class="header">
+        <h2 style="margin:0">📡 Monitoramento RD</h2>
+        <p style="margin:5px 0 0; font-size:14px">Radar de Farmácias Isoladas</p>
+    </div>
+    
     <div class="content">
-        <label>Código JAVA da Filial:</label>
-        <input type="text" id="javaInput" placeholder="Ex: 7" onkeypress="if(event.key === 'Enter') buscarLojaLocal()">
-        <button class="btn-search" onclick="buscarLojaLocal()">🔍 Consultar Base de Dados</button>
-        
-        <div id="statusMsg" class="status-msg"></div>
-
-        <div id="resultBox" class="result-box">
-            <strong>📍 Filial:</strong> <span id="resFilial"></span><br>
-            <strong>🏢 Regional:</strong> <span id="resRegional"></span><br>
-            <strong>📧 E-mail Loja:</strong> <span id="resEmail"></span>
+        <div class="input-group">
+            <label><strong>Código JAVA da Filial:</strong></label><br>
+            <input type="text" id="codigoInput" placeholder="Ex: 5062" onkeypress="if(event.key==='Enter') consultarLoja()">
         </div>
-        
-        <button id="btnGerarEmail" class="btn-email" onclick="dispararEmail()">📧 Abrir E-mail no Outlook</button>
+
+        <button class="btn-consultar" onclick="consultarLoja()">🔍 Consultar Base</button>
+        <button id="btnEmail" class="btn-email" onclick="gerarEmail()">📧 Gerar E-mail de Desligamento</button>
+
+        <div id="erroMsg" class="erro">⚠️ Filial não encontrada na base de dados!</div>
+
+        <div id="resultadoArea" class="resultado">
+            <p><strong>Filial:</strong> <span id="resJava"></span> - <span id="resNome"></span></p>
+            <p><strong>Regional:</strong> <span id="resReg"></span></p>
+            <p><strong>E-mail Regional:</strong> <span id="resEmailReg"></span></p>
+            <p><strong>E-mail Loja:</strong> <span id="resEmailLoja"></span></p>
+        </div>
     </div>
 </div>
 
 <script>
-    // BASE DE DADOS LOCAL (Aqui você insere os dados da sua planilha da imagem image_d24ce7.png)
+    const emailMonitoramento = "suporte.monitoramento@rd.com.br";
+
+    // BASE DE DADOS COMPLETA (Extraída do seu CSV)
     const baseLojas = [
-        { java: "6", nome: "SP PAULISTA", regional: "CARLA GABRIELA", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0006@rd.com.br" },
-        { java: "7", nome: "SAO CARLOS", regional: "JORGE LUIZ", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0007@rd.com.br" },
-        { java: "8", nome: "ARARAQUARA", regional: "JORGE LUIZ", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0008@rd.com.br" },
-        { java: "4517", nome: "ANDARAI C", regional: "ROBERTO SILVA", emailReg: "roberto@rd.com.br", emailLoja: "LJ1603@rd.com.br" },
-        { java: "5062", nome: "Indaiatuba G", regional: "MARCOS SOUZA", emailReg: "marcos@rd.com.br", emailLoja: "LJ5062@rd.com.br" }
-        // Você pode adicionar mais linhas seguindo este padrão
+        { java: "6", nome: "SP PAULISTA A", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0006@rd.com.br" },
+        { java: "7", nome: "SÃO CARLOS A", reg: "JORGE LUIS DA SILVA BUENO", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0007@rd.com.br" },
+        { java: "8", nome: "ARARAQUARA A", reg: "JORGE LUIS DA SILVA BUENO", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0008@rd.com.br" },
+        { java: "9", nome: "SP FREGUESIA DO Ó A", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0009@rd.com.br" },
+        { java: "13", nome: "PRAIA GRANDE A", reg: "FABIOLA ALVES GAMA", emailReg: "fagama@rd.com.br", emailLoja: "LJ0013@rd.com.br" },
+        { java: "15", nome: "RIO CLARO A", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0015@rd.com.br" },
+        { java: "16", nome: "ITU A", reg: "RENIVON ALVES DOS SANTOS", emailReg: "radsantos@rd.com.br", emailLoja: "LJ0016@rd.com.br" },
+        { java: "17", nome: "SÃO VICENTE A", reg: "FABIOLA ALVES GAMA", emailReg: "fagama@rd.com.br", emailLoja: "LJ0017@rd.com.br" },
+        { java: "18", nome: "GUARUJÁ D", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "DS0018@rd.com.br" },
+        { java: "19", nome: "SP BROOKLIN A", reg: "LIANA MARIA RODRIGUES GOMES", emailReg: "lmgomes@rd.com.br", emailLoja: "LJ0019@rd.com.br" },
+        { java: "20", nome: "SP PENHA A", reg: "EVANDRO FAVERO", emailReg: "efavero@rd.com.br", emailLoja: "LJ0020@rd.com.br" },
+        { java: "21", nome: "SP PINHEIROS A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0021@rd.com.br" },
+        { java: "23", nome: "SP SUMAREZINHO B", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0023@rd.com.br" },
+        { java: "24", nome: "SP ALTO DA LAPA A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0024@rd.com.br" },
+        { java: "25", nome: "SP ALTO PINHEIROS A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0025@rd.com.br" },
+        { java: "26", nome: "S JOSÉ RIO PRETO A", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0026@rd.com.br" },
+        { java: "27", nome: "RIBEIRÃO PRETO A", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ0027@rd.com.br" },
+        { java: "29", nome: "SP ITAIM BIBI A", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0029@rd.com.br" },
+        { java: "30", nome: "SP VILA OLIMPIA A", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0030@rd.com.br" },
+        { java: "31", nome: "LIMEIRA A", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0031@rd.com.br" },
+        { java: "33", nome: "SP MOEMA B", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0033@rd.com.br" },
+        { java: "34", nome: "CAMPINAS C", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0034@rd.com.br" },
+        { java: "36", nome: "PIRACICABA A", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0036@rd.com.br" },
+        { java: "37", nome: "SP PERDIZES A", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0037@rd.com.br" },
+        { java: "40", nome: "MOGI GUAÇU A", reg: "RENIVON ALVES DOS SANTOS", emailReg: "radsantos@rd.com.br", emailLoja: "LJ0040@rd.com.br" },
+        { java: "42", nome: "BAURU A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ0042@rd.com.br" },
+        { java: "44", nome: "SP VILA MARIANA A", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0044@rd.com.br" },
+        { java: "45", nome: "FRANCA A", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ0045@rd.com.br" },
+        { java: "47", nome: "SP HIGIENOPOLIS B", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0047@rd.com.br" },
+        { java: "48", nome: "SÃO CAETANO SUL A", reg: "DANIELA MARTINS MOREIRA", emailReg: "dmmoreira@rd.com.br", emailLoja: "LJ0048@rd.com.br" },
+        { java: "51", nome: "GUARULHOS A", reg: "EVANDRO FAVERO", emailReg: "efavero@rd.com.br", emailLoja: "LJ0051@rd.com.br" },
+        { java: "53", nome: "SANTOS A", reg: "FABIOLA ALVES GAMA", emailReg: "fagama@rd.com.br", emailLoja: "LJ0053@rd.com.br" },
+        { java: "54", nome: "SP VILA NOVA CONCEIÇÃO A", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0054@rd.com.br" },
+        { java: "57", nome: "SP CAMPO BELO A", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0057@rd.com.br" },
+        { java: "59", nome: "CAMPINAS A", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0059@rd.com.br" },
+        { java: "60", nome: "S B DO CAMPO A", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0060@rd.com.br" },
+        { java: "61", nome: "TAUBATÉ A", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0061@rd.com.br" },
+        { java: "62", nome: "S JOSÉ CAMPOS A", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0062@rd.com.br" },
+        { java: "63", nome: "SP LIBERDADE A", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0063@rd.com.br" },
+        { java: "65", nome: "SP ACLIMAÇÃO A", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0065@rd.com.br" },
+        { java: "67", nome: "SP CERQUEIRA CESAR B", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0067@rd.com.br" },
+        { java: "68", nome: "SÃO CARLOS B", reg: "JORGE LUIS DA SILVA BUENO", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0068@rd.com.br" },
+        { java: "70", nome: "CAMPINAS B", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0070@rd.com.br" },
+        { java: "71", nome: "SP MOEMA A", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0071@rd.com.br" },
+        { java: "75", nome: "SANTOS B", reg: "FABIOLA ALVES GAMA", emailReg: "fagama@rd.com.br", emailLoja: "LJ0075@rd.com.br" },
+        { java: "76", nome: "SP SANTANA A", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ0076@rd.com.br" },
+        { java: "79", nome: "SP TATUAPE A", reg: "EVANDRO FAVERO", emailReg: "efavero@rd.com.br", emailLoja: "LJ0079@rd.com.br" },
+        { java: "80", nome: "S JOSÉ RIO PRETO B", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0080@rd.com.br" },
+        { java: "82", nome: "SP INDIANOPOLIS A", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0082@rd.com.br" },
+        { java: "83", nome: "JUNDIAÍ A", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0083@rd.com.br" },
+        { java: "85", nome: "SP CASA VERDE A", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ0085@rd.com.br" },
+        { java: "87", nome: "SOROCABA A", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ0087@rd.com.br" },
+        { java: "88", nome: "SP CERQUEIRA CESAR C", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0088@rd.com.br" },
+        { java: "89", nome: "SANTO ANDRE A", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0089@rd.com.br" },
+        { java: "90", nome: "SP ITAIM BIBI B", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0090@rd.com.br" },
+        { java: "91", nome: "S JOSÉ CAMPOS B", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0091@rd.com.br" },
+        { java: "92", nome: "SP JARDIM AMÉRICA A", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0092@rd.com.br" },
+        { java: "93", nome: "SP HIGIENOPOLIS A", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0093@rd.com.br" },
+        { java: "95", nome: "SP JARDIM PAULISTA A", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0095@rd.com.br" },
+        { java: "97", nome: "SP BUTANTÃ A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0097@rd.com.br" },
+        { java: "98", nome: "SP VILA GUILHERME A", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ0098@rd.com.br" },
+        { java: "99", nome: "GUARULHOS B", reg: "EVANDRO FAVERO", emailReg: "efavero@rd.com.br", emailLoja: "LJ0099@rd.com.br" },
+        { java: "100", nome: "CAMPINAS D", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0100@rd.com.br" },
+        { java: "104", nome: "SP BELA VISTA A", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0104@rd.com.br" },
+        { java: "108", nome: "SP CERQUEIRA CESAR A", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0108@rd.com.br" },
+        { java: "115", nome: "GUARULHOS C", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ0115@rd.com.br" },
+        { java: "116", nome: "SP ALTO DA LAPA B", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0116@rd.com.br" },
+        { java: "123", nome: "SP MOEMA C", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0123@rd.com.br" },
+        { java: "125", nome: "S B DO CAMPO B", reg: "DANIELA MARTINS MOREIRA", emailReg: "dmmoreira@rd.com.br", emailLoja: "LJ0125@rd.com.br" },
+        { java: "129", nome: "JACAREÍ A", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0129@rd.com.br" },
+        { java: "140", nome: "S B DO CAMPO C", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0140@rd.com.br" },
+        { java: "141", nome: "MARILIA A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ0141@rd.com.br" },
+        { java: "143", nome: "SP PERDIZES B", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0143@rd.com.br" },
+        { java: "145", nome: "S JOSÉ RIO PRETO C", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0145@rd.com.br" },
+        { java: "154", nome: "VALINHOS A", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0154@rd.com.br" },
+        { java: "172", nome: "SANTOS C", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0172@rd.com.br" },
+        { java: "186", nome: "SP VILA MARIANA B", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0186@rd.com.br" },
+        { java: "189", nome: "INDAIATUBA A", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0189@rd.com.br" },
+        { java: "193", nome: "CAMPINAS E", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0193@rd.com.br" },
+        { java: "194", nome: "BRAGANÇA PAULISTA A", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ0194@rd.com.br" },
+        { java: "195", nome: "ATIBAIA A", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ0195@rd.com.br" },
+        { java: "216", nome: "VINHEDO A", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0216@rd.com.br" },
+        { java: "220", nome: "SP ACLIMAÇÃO B", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ0220@rd.com.br" },
+        { java: "223", nome: "S B DO CAMPO D", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0223@rd.com.br" },
+        { java: "224", nome: "S B DO CAMPO E", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0224@rd.com.br" },
+        { java: "225", nome: "SP BROOKLIN B", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0225@rd.com.br" },
+        { java: "226", nome: "GUARUJÁ C", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0226@rd.com.br" },
+        { java: "244", nome: "PIRACICABA B", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0244@rd.com.br" },
+        { java: "248", nome: "AMERICANA A", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0248@rd.com.br" },
+        { java: "258", nome: "BARUERI A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0258@rd.com.br" },
+        { java: "284", nome: "S JOSÉ RIO PRETO D", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0284@rd.com.br" },
+        { java: "313", nome: "SP JARDIM PAULISTA B", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0313@rd.com.br" },
+        { java: "349", nome: "SP VILA NOVA CONCEIÇÃO B", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0349@rd.com.br" },
+        { java: "405", nome: "S JOSÉ CAMPOS C", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0405@rd.com.br" },
+        { java: "463", nome: "TAUBATÉ B", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0463@rd.com.br" },
+        { java: "464", nome: "SP PANAMBY A", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0464@rd.com.br" },
+        { java: "525", nome: "SP VILA LEOPOLDINA A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0525@rd.com.br" },
+        { java: "530", nome: "PAULINIA A", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0530@rd.com.br" },
+        { java: "532", nome: "COTIA A", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ0532@rd.com.br" },
+        { java: "542", nome: "UBERLÂNDIA A", reg: "MÔNICA MACHADO", emailReg: "mmachado@rd.com.br", emailLoja: "LJ0542@rd.com.br" },
+        { java: "553", nome: "SOROCABA B", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ0553@rd.com.br" },
+        { java: "555", nome: "SP MORUMBI A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0555@rd.com.br" },
+        { java: "600", nome: "ARARAQUARA B", reg: "JORGE LUIS DA SILVA BUENO", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0600@rd.com.br" },
+        { java: "605", nome: "SP VILA MADALENA A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0605@rd.com.br" },
+        { java: "607", nome: "SP POMPEIA A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0607@rd.com.br" },
+        { java: "613", nome: "SANTOS D", reg: "FABIOLA ALVES GAMA", emailReg: "fagama@rd.com.br", emailLoja: "LJ0613@rd.com.br" },
+        { java: "617", nome: "CARAGUATATUBA A", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ0617@rd.com.br" },
+        { java: "624", nome: "SP REAL PARQUE A", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0624@rd.com.br" },
+        { java: "647", nome: "SP SUMAREZINHO A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0647@rd.com.br" },
+        { java: "704", nome: "SP CAMPO BELO B", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0704@rd.com.br" },
+        { java: "707", nome: "SÃO CARLOS C", reg: "JORGE LUIS DA SILVA BUENO", emailReg: "jlbueno@rd.com.br", emailLoja: "LJ0707@rd.com.br" },
+        { java: "715", nome: "S JOSÉ RIO PRETO E", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0715@rd.com.br" },
+        { java: "718", nome: "PRESIDENTE PRUDENTE A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ0718@rd.com.br" },
+        { java: "732", nome: "SP MOEMA D", reg: "VANESSA MARQUES", emailReg: "vmarques@rd.com.br", emailLoja: "LJ0732@rd.com.br" },
+        { java: "743", nome: "ITU B", reg: "RENIVON ALVES DOS SANTOS", emailReg: "radsantos@rd.com.br", emailLoja: "LJ0743@rd.com.br" },
+        { java: "744", nome: "ARAÇATUBA A", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0744@rd.com.br" },
+        { java: "745", nome: "VALINHOS B", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ0745@rd.com.br" },
+        { java: "753", nome: "SOROCABA C", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ0753@rd.com.br" },
+        { java: "763", nome: "SANTANA PARNAIBA A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ0763@rd.com.br" },
+        { java: "777", nome: "CATANDUVA A", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ0777@rd.com.br" },
+        { java: "788", nome: "RIBEIRÃO PRETO B", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ0788@rd.com.br" },
+        { java: "818", nome: "SOROCABA D", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ0818@rd.com.br" },
+        { java: "827", nome: "SP LAPA A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ0827@rd.com.br" },
+        { java: "830", nome: "SALTO A", reg: "RENIVON ALVES DOS SANTOS", emailReg: "radsantos@rd.com.br", emailLoja: "LJ0830@rd.com.br" },
+        { java: "832", nome: "S B DO CAMPO F", reg: "WERICOS ALEIXO SILVA", emailReg: "wasilva@rd.com.br", emailLoja: "LJ0832@rd.com.br" },
+        { java: "834", nome: "BOITUVA A", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ0834@rd.com.br" },
+        { java: "852", nome: "ARARAS A", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0852@rd.com.br" },
+        { java: "853", nome: "PIRACICABA C", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ0853@rd.com.br" },
+        { java: "855", nome: "SP CERQUEIRA CESAR D", reg: "CRISLAINE CARDOSO DE FRANCA", emailReg: "crisfranca@rd.com.br", emailLoja: "LJ0855@rd.com.br" },
+        { java: "880", nome: "PRESIDENTE PRUDENTE B", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ0880@rd.com.br" },
+        { java: "900", nome: "MOGI MIRIM A", reg: "RENIVON ALVES DOS SANTOS", emailReg: "radsantos@rd.com.br", emailLoja: "LJ0900@rd.com.br" },
+        { java: "931", nome: "GUARULHOS D", reg: "EVANDRO FAVERO", emailReg: "efavero@rd.com.br", emailLoja: "LJ0931@rd.com.br" },
+        { java: "940", nome: "SP CAMPO BELO C", reg: "LORENA CASTRO CORREA", emailReg: "lcorrea@rd.com.br", emailLoja: "LJ0940@rd.com.br" },
+        { java: "951", nome: "LENÇOIS PAULISTA A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ0951@rd.com.br" },
+        { java: "983", nome: "ASSIS A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ0983@rd.com.br" },
+        { java: "1001", nome: "SANTO ANDRE B", reg: "DANIELA MARTINS MOREIRA", emailReg: "dmmoreira@rd.com.br", emailLoja: "LJ1001@rd.com.br" },
+        { java: "1002", nome: "SP CHÁCARA STO ANTONIO A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ1002@rd.com.br" },
+        { java: "1008", nome: "TATUI A", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ1008@rd.com.br" },
+        { java: "1032", nome: "SÃO ROQUE A", reg: "VALERIA GARCIA MOREIRA", emailReg: "vmoreira@rd.com.br", emailLoja: "LJ1032@rd.com.br" },
+        { java: "1041", nome: "JAÚ A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ1041@rd.com.br" },
+        { java: "1043", nome: "SÃO CAETANO SUL B", reg: "DANIELA MARTINS MOREIRA", emailReg: "dmmoreira@rd.com.br", emailLoja: "LJ1043@rd.com.br" },
+        { java: "1071", nome: "OURINHOS A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ1071@rd.com.br" },
+        { java: "1110", nome: "BOTUCATU A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ1110@rd.com.br" },
+        { java: "1124", nome: "FRANCA B", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ1124@rd.com.br" },
+        { java: "1129", nome: "SP GRANJA JULIETA A", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ1129@rd.com.br" },
+        { java: "1131", nome: "PIRACICABA D", reg: "DAISE FRANCIELLE MOLINA CORREA GRIJOTA", emailReg: "daisgrijota@rd.com.br", emailLoja: "LJ1131@rd.com.br" },
+        { java: "1141", nome: "BAURU B", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ1141@rd.com.br" },
+        { java: "1142", nome: "MARILIA B", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ1142@rd.com.br" },
+        { java: "1146", nome: "SP ALTO PINHEIROS B", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ1146@rd.com.br" },
+        { java: "1149", nome: "SP BARRA FUNDA A", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ1149@rd.com.br" },
+        { java: "1151", nome: "S JOSÉ RIO PRETO F", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ1151@rd.com.br" },
+        { java: "1152", nome: "ARAÇATUBA B", reg: "GABRIEL ESTEVAM", emailReg: "gestevam@rd.com.br", emailLoja: "LJ1152@rd.com.br" },
+        { java: "1155", nome: "RIBEIRÃO PRETO C", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ1155@rd.com.br" },
+        { java: "1156", nome: "RIBEIRÃO PRETO D", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ1156@rd.com.br" },
+        { java: "1159", nome: "AVARÉ A", reg: "ANA PAULA DA COSTA SANTOS", emailReg: "apsantos@rd.com.br", emailLoja: "LJ1159@rd.com.br" },
+        { java: "1173", nome: "SP PINHEIROS B", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ1173@rd.com.br" },
+        { java: "1176", nome: "UBERLÂNDIA B", reg: "MÔNICA MACHADO", emailReg: "mmachado@rd.com.br", emailLoja: "LJ1176@rd.com.br" },
+        { java: "1236", nome: "UBERABA A", reg: "MÔNICA MACHADO", emailReg: "mmachado@rd.com.br", emailLoja: "LJ1236@rd.com.br" },
+        { java: "1256", nome: "UBERLÂNDIA C", reg: "MÔNICA MACHADO", emailReg: "mmachado@rd.com.br", emailLoja: "LJ1256@rd.com.br" },
+        { java: "1283", nome: "SP MORUMBI B", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ1283@rd.com.br" },
+        { java: "1284", nome: "SP MORUMBI C", reg: "ANDREIA ALVES PINTO DE OLIVEIRA", emailReg: "andoliveira@rd.com.br", emailLoja: "LJ1284@rd.com.br" },
+        { java: "1285", nome: "SP ALTO PINHEIROS C", reg: "MARLENE DA SILVA", emailReg: "marsilva@rd.com.br", emailLoja: "LJ1285@rd.com.br" },
+        { java: "1351", nome: "POÇOS DE CALDAS A", reg: "DOUGLAS COSTA", emailReg: "dcosta@rd.com.br", emailLoja: "LJ1351@rd.com.br" },
+        { java: "1386", nome: "SP PARAISO A", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ1386@rd.com.br" },
+        { java: "1387", nome: "SP JARDIM PAULISTA C", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ1387@rd.com.br" },
+        { java: "1388", nome: "SP VILA MARIANA C", reg: "CARLA GABRIELI BORGES", emailReg: "carlborges@rd.com.br", emailLoja: "LJ1388@rd.com.br" },
+        { java: "1483", nome: "PATOS DE MINAS A", reg: "MÔNICA MACHADO", emailReg: "mmachado@rd.com.br", emailLoja: "LJ1483@rd.com.br" },
+        { java: "1551", nome: "POUSO ALEGRE A", reg: "DOUGLAS COSTA", emailReg: "dcosta@rd.com.br", emailLoja: "LJ1551@rd.com.br" },
+        { java: "1586", nome: "VARGINHA A", reg: "DOUGLAS COSTA", emailReg: "dcosta@rd.com.br", emailLoja: "LJ1586@rd.com.br" },
+        { java: "1651", nome: "JUIZ DE FORA A", reg: "DOUGLAS COSTA", emailReg: "dcosta@rd.com.br", emailLoja: "LJ1651@rd.com.br" },
+        { java: "1851", nome: "DIVINÓPOLIS A", reg: "DOUGLAS COSTA", emailReg: "dcosta@rd.com.br", emailLoja: "LJ1851@rd.com.br" },
+        { java: "2013", nome: "BARRETOS A", reg: "ILCA LIMA SANTOS", emailReg: "ilsantos@rd.com.br", emailLoja: "LJ2013@rd.com.br" },
+        { java: "2031", nome: "S JOSÉ CAMPOS D", reg: "JORGE LUIZ OLIVEIRA", emailReg: "joliveira@rd.com.br", emailLoja: "LJ2031@rd.com.br" },
+        { java: "2160", nome: "MOGI DAS CRUZES A", reg: "RENATA GOMES DE OLIVEIRA", emailReg: "rgoliveira@rd.com.br", emailLoja: "LJ2160@rd.com.br" },
+        { java: "2233", nome: "BELO HORIZONTE A", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2233@rd.com.br" },
+        { java: "2234", nome: "BELO HORIZONTE B", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2234@rd.com.br" },
+        { java: "2235", nome: "BELO HORIZONTE C", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2235@rd.com.br" },
+        { java: "2236", nome: "BELO HORIZONTE D", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2236@rd.com.br" },
+        { java: "2237", nome: "BELO HORIZONTE E", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2237@rd.com.br" },
+        { java: "2238", nome: "CONTAGEM A", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2238@rd.com.br" },
+        { java: "2239", nome: "CONTAGEM B", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2239@rd.com.br" },
+        { java: "2240", nome: "BETIM A", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2240@rd.com.br" },
+        { java: "2241", nome: "NOVA LIMA A", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2241@rd.com.br" },
+        { java: "2242", nome: "BELO HORIZONTE F", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2242@rd.com.br" },
+        { java: "2243", nome: "BELO HORIZONTE G", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2243@rd.com.br" },
+        { java: "2244", nome: "BELO HORIZONTE H", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2244@rd.com.br" },
+        { java: "2245", nome: "BELO HORIZONTE I", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2245@rd.com.br" },
+        { java: "2246", nome: "BELO HORIZONTE J", reg: "ALINE FERREIRA", emailReg: "aferreira@rd.com.br", emailLoja: "LJ2246@rd.com.br" },
+        { java: "2250", nome: "MONTES CLAROS A", reg: "MÔNICA MACHADO", emailReg: "mmachado@rd.com.br", emailLoja: "LJ2250@rd.com.br" },
+        { java: "3132", nome: "CURITIBA A", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3132@rd.com.br" },
+        { java: "3133", nome: "CURITIBA B", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3133@rd.com.br" },
+        { java: "3134", nome: "CURITIBA C", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3134@rd.com.br" },
+        { java: "3135", nome: "CURITIBA D", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3135@rd.com.br" },
+        { java: "3136", nome: "LONDRINA A", reg: "ALEXANDRE CAMPOS", emailReg: "acampos@rd.com.br", emailLoja: "LJ3136@rd.com.br" },
+        { java: "3137", nome: "MARINGÁ A", reg: "ALEXANDRE CAMPOS", emailReg: "acampos@rd.com.br", emailLoja: "LJ3137@rd.com.br" },
+        { java: "3138", nome: "PONTA GROSSA A", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3138@rd.com.br" },
+        { java: "3139", nome: "CASCAVEL A", reg: "ALEXANDRE CAMPOS", emailReg: "acampos@rd.com.br", emailLoja: "LJ3139@rd.com.br" },
+        { java: "3140", nome: "FOZ DO IGUAÇU A", reg: "ALEXANDRE CAMPOS", emailReg: "acampos@rd.com.br", emailLoja: "LJ3140@rd.com.br" },
+        { java: "3141", nome: "CURITIBA E", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3141@rd.com.br" },
+        { java: "3142", nome: "CURITIBA F", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3142@rd.com.br" },
+        { java: "3143", nome: "LONDRINA B", reg: "ALEXANDRE CAMPOS", emailReg: "acampos@rd.com.br", emailLoja: "LJ3143@rd.com.br" },
+        { java: "3144", nome: "CURITIBA G", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3144@rd.com.br" },
+        { java: "3145", nome: "CURITIBA H", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3145@rd.com.br" },
+        { java: "3146", nome: "CURITIBA I", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3146@rd.com.br" },
+        { java: "3147", nome: "S JOSÉ DOS PINHAIS A", reg: "SIMONE FOSSI", emailReg: "sfossi@rd.com.br", emailLoja: "LJ3147@rd.com.br" },
+        { java: "3150", nome: "MARINGÁ B", reg: "ALEXANDRE CAMPOS", emailReg: "acampos@rd.com.br", emailLoja: "LJ3150@rd.com.br" },
+        { java: "4001", nome: "PORTO ALEGRE A", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4001@rd.com.br" },
+        { java: "4002", nome: "PORTO ALEGRE B", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4002@rd.com.br" },
+        { java: "4003", nome: "PORTO ALEGRE C", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4003@rd.com.br" },
+        { java: "4004", nome: "CAXIAS DO SUL A", reg: "GABRIEL MATOS", emailReg: "gmatos@rd.com.br", emailLoja: "LJ4004@rd.com.br" },
+        { java: "4005", nome: "PELOTAS A", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4005@rd.com.br" },
+        { java: "4006", nome: "CANOAS A", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4006@rd.com.br" },
+        { java: "4007", nome: "SANTA MARIA A", reg: "GABRIEL MATOS", emailReg: "gmatos@rd.com.br", emailLoja: "LJ4007@rd.com.br" },
+        { java: "4008", nome: "PORTO ALEGRE D", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4008@rd.com.br" },
+        { java: "4009", nome: "PORTO ALEGRE E", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4009@rd.com.br" },
+        { java: "4010", nome: "NOVO HAMBURGO A", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4010@rd.com.br" },
+        { java: "4011", nome: "PORTO ALEGRE F", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4011@rd.com.br" },
+        { java: "4012", nome: "PASSO FUNDO A", reg: "GABRIEL MATOS", emailReg: "gmatos@rd.com.br", emailLoja: "LJ4012@rd.com.br" },
+        { java: "4013", nome: "SÃO LEOPOLDO A", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4013@rd.com.br" },
+        { java: "4015", nome: "PORTO ALEGRE G", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4015@rd.com.br" },
+        { java: "4018", nome: "GRAVATAI A", reg: "ALINE SOUZA", emailReg: "asouza@rd.com.br", emailLoja: "LJ4018@rd.com.br" },
+        { java: "5001", nome: "FLORIANÓPOLIS A", reg: "CAMILA ROCHA", emailReg: "crocha@rd.com.br", emailLoja: "LJ5001@rd.com.br" },
+        { java: "5002", nome: "JOINVILLE A", reg: "LUCAS OLIVEIRA", emailReg: "loliveira@rd.com.br", emailLoja: "LJ5002@rd.com.br" },
+        { java: "5003", nome: "BLUMENAU A", reg: "LUCAS OLIVEIRA", emailReg: "loliveira@rd.com.br", emailLoja: "LJ5003@rd.com.br" },
+        { java: "5004", nome: "SÃO JOSÉ A", reg: "CAMILA ROCHA", emailReg: "crocha@rd.com.br", emailLoja: "LJ5004@rd.com.br" },
+        { java: "5005", nome: "CRICIÚMA A", reg: "CAMILA ROCHA", emailReg: "crocha@rd.com.br", emailLoja: "LJ5005@rd.com.br" },
+        { java: "5006", nome: "ITAJAÍ A", reg: "LUCAS OLIVEIRA", emailReg: "loliveira@rd.com.br", emailLoja: "LJ5006@rd.com.br" },
+        { java: "5007", nome: "FLORIANÓPOLIS B", reg: "CAMILA ROCHA", emailReg: "crocha@rd.com.br", emailLoja: "LJ5007@rd.com.br" },
+        { java: "5008", nome: "BALNEÁRIO CAMBORIU A", reg: "LUCAS OLIVEIRA", emailReg: "loliveira@rd.com.br", emailLoja: "LJ5008@rd.com.br" },
+        { java: "5009", nome: "FLORIANÓPOLIS C", reg: "CAMILA ROCHA", emailReg: "crocha@rd.com.br", emailLoja: "LJ5009@rd.com.br" },
+        { java: "5010", nome: "PALHOÇA A", reg: "CAMILA ROCHA", emailReg: "crocha@rd.com.br", emailLoja: "LJ5010@rd.com.br" },
+        { java: "5011", nome: "CHAPECÓ A", reg: "GABRIEL MATOS", emailReg: "gmatos@rd.com.br", emailLoja: "LJ5011@rd.com.br" },
+        { java: "5012", nome: "BLUMENAU B", reg: "LUCAS OLIVEIRA", emailReg: "loliveira@rd.com.br", emailLoja: "LJ5012@rd.com.br" },
+        { java: "5014", nome: "JOINVILLE B", reg: "LUCAS OLIVEIRA", emailReg: "loliveira@rd.com.br", emailLoja: "LJ5014@rd.com.br" },
+        { java: "5062", nome: "INDAIATUBA G", reg: "FERNANDA BIAUTI OLIVEIRA", emailReg: "foliveira@rd.com.br", emailLoja: "LJ5062@rd.com.br" }
     ];
 
     let lojaSelecionada = null;
 
-    function buscarLojaLocal() {
-        const javaInput = document.getElementById('javaInput').value.trim();
-        const status = document.getElementById('statusMsg');
-        
-        // Busca instantânea na lista acima (sem dependência de internet)
-        lojaSelecionada = baseLojas.find(l => l.java === javaInput);
+    function consultarLoja() {
+        const cod = document.getElementById('codigoInput').value.trim();
+        lojaSelecionada = baseLojas.find(l => l.java === cod);
 
         if (lojaSelecionada) {
-            document.getElementById('resFilial').innerText = `${lojaSelecionada.java} - ${lojaSelecionada.nome}`;
-            document.getElementById('resRegional').innerText = lojaSelecionada.regional;
-            document.getElementById('resEmail').innerText = lojaSelecionada.emailLoja;
+            document.getElementById('erroMsg').style.display = 'none';
+            document.getElementById('resultadoArea').style.display = 'block';
+            document.getElementById('btnEmail').style.display = 'block';
 
-            status.innerHTML = "✅ Dados carregados com sucesso!";
-            status.style.color = "green";
-            document.getElementById('resultBox').style.display = "block";
-            document.getElementById('btnGerarEmail').style.display = "block";
+            document.getElementById('resJava').innerText = lojaSelecionada.java;
+            document.getElementById('resNome').innerText = lojaSelecionada.nome;
+            document.getElementById('resReg').innerText = lojaSelecionada.reg;
+            document.getElementById('resEmailReg').innerText = lojaSelecionada.emailReg;
+            document.getElementById('resEmailLoja').innerText = lojaSelecionada.emailLoja;
         } else {
-            status.innerHTML = "⚠️ Código JAVA não encontrado na base local.";
-            status.style.color = "orange";
-            document.getElementById('resultBox').style.display = "none";
-            document.getElementById('btnGerarEmail').style.display = "none";
+            document.getElementById('erroMsg').style.display = 'block';
+            document.getElementById('resultadoArea').style.display = 'none';
+            document.getElementById('btnEmail').style.display = 'none';
         }
     }
 
-    function dispararEmail() {
-        if (!lojaSelecionada) return;
-        
-        const suporteMonitoramento = "suportemonitoramento@rd.com.br";
-        const destinatario = lojaSelecionada.emailLoja;
-        const cc = `${lojaSelecionada.emailReg}; ${suporteMonitoramento}`;
-        
-        const assunto = encodeURIComponent(`Desligamento de Serviços - Filial ${lojaSelecionada.java} – ${lojaSelecionada.nome}`);
-        
-        const corpo = encodeURIComponent(`Prezados, boa tarde!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaSelecionada.java} – ${lojaSelecionada.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\nSolicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\nEm caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,`);
+    function getSaudacao() {
+        const hora = new Date().getHours();
+        if (hora >= 5 && hora < 12) return "bom dia";
+        if (hora >= 12 && hora < 18) return "boa tarde";
+        return "boa noite";
+    }
 
-        window.location.href = `mailto:${destinatario}?cc=${cc}&subject=${assunto}&body=${corpo}`;
+    function gerarEmail() {
+        if (!lojaSelecionada) return;
+
+        const saudacao = getSaudacao();
+        const assunto = encodeURIComponent(`Acionamento de Desligamento - Filial ${lojaSelecionada.java} - ${lojaSelecionada.nome}`);
+        
+        const corpo = encodeURIComponent(
+            `Prezados, ${saudacao}!\n\n` +
+            `Encaminhamos este e-mail para informar que os serviços da Filial ${lojaSelecionada.java} – ${lojaSelecionada.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\n` +
+            `Solicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\n` +
+            `Em caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n` +
+            `https://grupordprod.service-now.com/esc\n\n` +
+            `Atenciosamente,\n` +
+            `Suporte Monitoramento RD`
+        );
+
+        const destinatarios = `${lojaSelecionada.emailReg};${lojaSelecionada.emailLoja}`;
+        window.location.href = `mailto:${destinatarios}?cc=${emailMonitoramento}&subject=${assunto}&body=${corpo}`;
     }
 </script>
+
 </body>
 </html>
