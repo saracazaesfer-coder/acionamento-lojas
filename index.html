@@ -2,38 +2,53 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Farmácias Isoladas</title>
+    <title>Farmácias Isoladas - Monitoramento RD</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; padding: 20px; display: flex; justify-content: center; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 550px; text-align: center; }
-        h2 { color: #003366; margin-bottom: 5px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f4f7f9; padding: 20px; display: flex; justify-content: center; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 600px; text-align: center; }
+        h2 { color: #003366; margin-bottom: 5px; font-size: 22px; }
         .subtitle { color: #666; font-size: 14px; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
         input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 18px; text-align: center; outline: none; }
         input:focus { border-color: #003366; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; transition: 0.3s; }
-        .btn-search { background-color: #003366; color: white; }
-        .btn-search:hover { background-color: #002244; }
-        .btn-email { background-color: #28a745; color: white; display: none; margin-top: 25px; }
-        .btn-email:hover { background-color: #218838; }
+        
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 10px; transition: 0.3s; display: none; }
+        .btn-search { background-color: #003366; color: white; display: block; }
+        
+        /* Novas Cores Solicitadas */
+        .btn-reabertura { background-color: #808000; color: white; } /* Verde Oliva */
+        .btn-fechamento { background-color: #FF8C00; color: white; } /* Laranja */
+        .btn-forms { background-color: #ffffff; color: #333; border: 1px solid #ccc; } /* Branco */
+        
+        button:hover { opacity: 0.85; transform: scale(1.01); }
+        .btn-forms:hover { background-color: #f9f9f9; }
+
         .result-box { margin-top: 20px; padding: 20px; border-left: 5px solid #003366; background: #f8f9fa; display: none; text-align: left; line-height: 1.6; }
+        .section-title { font-size: 11px; font-weight: bold; color: #999; text-transform: uppercase; margin-top: 20px; text-align: left; letter-spacing: 1px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>Farmácias Isoladas</h2>
-    <p class="subtitle">Suporte Monitoramento - RD Saúde</p>
+    <h2>Farmácias Isoladas - Monitoramento RD</h2>
+    <p class="subtitle">Gestão de Alertas e Erros Sistêmicos</p>
     
-    <input type="text" id="javaInput" placeholder="Digite o Código JAVA">
-    <button class="btn-search" onclick="buscar()">🔍 Consultar Unidade</button>
+    <input type="text" id="javaInput" placeholder="Digite o Código JAVA da Filial">
+    <button class="btn-search" style="display:block;" onclick="buscar()">🔍 Consultar Unidade</button>
 
     <div id="resultBox" class="result-box">
         <strong>📍 Filial:</strong> <span id="resNome"></span><br>
         <strong>🏢 Regional:</strong> <span id="resReg"></span><br>
-        <strong>📧 E-mail Loja:</strong> <span id="resEmail"></span>
+        <strong>📧 E-mail:</strong> <span id="resEmail"></span>
     </div>
 
-    <button id="btnEmail" class="btn-email" onclick="gerarEmail()">📧 Abrir E-mail de Desligamento</button>
+    <div id="acoes" style="display:none;">
+        <div class="section-title">Comunicação via E-mail</div>
+        <button id="btnReabertura" class="btn-reabertura" onclick="gerarEmail('reabertura')">✅ Enviar E-mail de REABERTURA</button>
+        <button id="btnFechamento" class="btn-fechamento" onclick="gerarEmail('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
+        
+        <div class="section-title">Registro de Logs</div>
+        <button id="btnForms" class="btn-forms" onclick="abrirForms()">📝 Abrir Forms (Preenchimento Automático)</button>
+    </div>
 </div>
 
 <script id="dadosLojas" type="text/plain">
@@ -3564,75 +3579,66 @@ lj1845@rd.com.br"
 </script>
 
 <script>
-    const baseLojas = {};
-    const rawData = document.getElementById('dadosLojas').textContent.trim();
-    
-    // Processa os dados colados (formato JAVA|NOME|REGIONAL|EMAIL_REG|EMAIL_LOJA)
-    if (rawData) {
-        rawData.split('\n').forEach(linha => {
-            const partes = linha.split('|');
-            if(partes.length >= 5) {
-                baseLojas[partes[0].trim()] = { 
-                    nome: partes[1].trim(), 
-                    regional: partes[2].trim(), 
-                    emailReg: partes[3].trim(), 
-                    emailLoja: partes[4].trim() 
-                };
-            }
-        });
-    }
-
-    let lojaAtiva = null;
+    let loja = null;
 
     function buscar() {
-        const id = document.getElementById('javaInput').value.trim();
-        const d = baseLojas[id];
+        const input = document.getElementById('javaInput').value.trim();
+        const dadosRaw = document.getElementById('dadosLojas').textContent.trim().split('\n');
+        
+        loja = null;
+        for (let linha of dadosRaw) {
+            const [id, nome, regional, emailReg, emailLoja] = linha.split('|');
+            if (id === input) {
+                loja = { id, nome, regional, emailLoja };
+                break;
+            }
+        }
 
-        if (d) {
-            lojaAtiva = { id, ...d };
-            document.getElementById('resNome').innerText = id + " - " + d.nome;
-            document.getElementById('resReg').innerText = d.regional;
-            document.getElementById('resEmail').innerText = d.emailLoja;
-            
+        if (loja) {
+            document.getElementById('resNome').textContent = `${loja.id} - ${loja.nome}`;
+            document.getElementById('resReg').textContent = loja.regional;
+            document.getElementById('resEmail').textContent = loja.emailLoja;
             document.getElementById('resultBox').style.display = 'block';
-            document.getElementById('btnEmail').style.display = 'block';
+            document.getElementById('acoes').style.display = 'block';
+            document.querySelectorAll('#acoes button').forEach(b => b.style.display = 'block');
         } else {
-            alert("⚠️ Código JAVA não encontrado!");
-            document.getElementById('resultBox').style.display = 'none';
-            document.getElementById('btnEmail').style.display = 'none';
+            alert('Filial não encontrada na base.');
         }
     }
 
-    function gerarEmail() {
-        if (!lojaAtiva) return;
+    function gerarEmail(tipo) {
+        if (!loja) return;
+        const saudacao = (new Date().getHours() < 12) ? "Bom dia" : "Boa tarde";
+        let assunto, corpo;
 
-        const hora = new Date().getHours();
-        const saudacao = hora < 12 ? "bom dia" : (hora < 18 ? "boa tarde" : "boa noite");
-        
-        const assunto = encodeURIComponent(`Desligamento de Serviços - Filial ${lojaAtiva.id} – ${lojaAtiva.nome}`);
-        
-        // Texto exato solicitado pelo usuário
-        const corpo = `Prezados, ${saudacao}!
+        if (tipo === 'fechamento') {
+            assunto = `Suspensão de Serviços - Filial ${loja.id} - ${loja.nome}`;
+            corpo = `Prezados, ${saudacao}!\n\n` +
+                `Encaminhamos este e-mail para informar que os serviços da Filial ${loja.id} – ${loja.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\n` +
+                `Solicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\n` +
+                `Em caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n` +
+                `https://grupordprod.service-now.com/esc\n\n` +
+                `Atenciosamente,\nSuporte monitoramento`;
+        } else {
+            assunto = `Reabertura de Serviços - Filial ${loja.id} - ${loja.nome}`;
+            corpo = `Prezados, ${saudacao}!\n\n` +
+                `Informamos que os serviços da filial ${loja.nome} já se encontram abertos.\n\n` +
+                `Reforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\n` +
+                `Em caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\n` +
+                `https://grupordprod.service-now.com/esc\n\n` +
+                `Atenciosamente,\nSuporte monitoramento`;
+        }
 
-Encaminhamos este e-mail para informar que os serviços da Filial ${lojaAtiva.id} – ${lojaAtiva.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.
-
-Solicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.
-
-Em caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:
-https://grupordprod.service-now.com/esc
-
-Atenciosamente,
-Suporte monitoramento`;
-
-        const cc = `${lojaAtiva.emailReg}; suportemonitoramento@rdsaude.com.br`;
-        
-        window.location.href = `mailto:${lojaAtiva.emailLoja}?cc=${cc}&subject=${assunto}&body=${encodeURIComponent(corpo)}`;
+        window.location.href = `mailto:${loja.emailLoja}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
     }
 
-    // Permite buscar ao apertar a tecla Enter
-    document.getElementById('javaInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') buscar();
-    });
+    function abrirForms() {
+        const baseUrl = "https://forms.office.com/Pages/ResponsePage.aspx?id=e9uigTa1BUmke22JK9LyEFSCpIb5Oi1HiKXx1VE526tUNkxCQkRGOTI4Nk5NQTk4MUNTSzdVWDdFSi4u";
+        const preFill = `&rce89a878531d4e028f804245979f4f46=${loja.id}` + 
+                        `&r683510e159754f7380f7697193988691=["COMPRE E RETIRE FECHADO","MICRO POLO FECHADO","IFOOD FECHADO"]` +
+                        `&r8d886971a81d4b689976779774653f57=Grafana - Filiais Isoladas/Sem contato`;
+        window.open(baseUrl + preFill, '_blank');
+    }
 </script>
 
 </body>
