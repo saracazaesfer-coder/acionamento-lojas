@@ -14,14 +14,11 @@
         button { width: 100%; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 10px; transition: 0.3s; display: none; }
         .btn-search { background-color: #003366; color: white; display: block; }
         
-        /* Novas Cores Solicitadas */
-        .btn-reabertura { background-color: #808000; color: white; } /* Verde Oliva */
-        .btn-fechamento { background-color: #FF8C00; color: white; } /* Laranja */
-        .btn-forms { background-color: #ffffff; color: #333; border: 1px solid #ccc; } /* Branco */
+        .btn-reabertura { background-color: #808000; color: white; }
+        .btn-fechamento { background-color: #FF8C00; color: white; }
+        .btn-forms { background-color: #ffffff; color: #333; border: 1px solid #ccc; }
         
         button:hover { opacity: 0.85; transform: scale(1.01); }
-        .btn-forms:hover { background-color: #f9f9f9; }
-
         .result-box { margin-top: 20px; padding: 20px; border-left: 5px solid #003366; background: #f8f9fa; display: none; text-align: left; line-height: 1.6; }
         .section-title { font-size: 11px; font-weight: bold; color: #999; text-transform: uppercase; margin-top: 20px; text-align: left; letter-spacing: 1px; }
     </style>
@@ -32,17 +29,17 @@
     <h2>Farmácias Isoladas - Monitoramento RD</h2>
     <p class="subtitle">Gestão de Alertas e Erros Sistêmicos</p>
     
-    <input type="text" id="javaInput" placeholder="Digite o Código JAVA da Filial">
+    <input type="text" id="javaInput" placeholder="Digite o Código JAVA">
     <button class="btn-search" style="display:block;" onclick="buscar()">🔍 Consultar Unidade</button>
 
     <div id="resultBox" class="result-box">
         <strong>📍 Filial:</strong> <span id="resNome"></span><br>
         <strong>🏢 Regional:</strong> <span id="resReg"></span><br>
-        <strong>📧 E-mail:</strong> <span id="resEmail"></span>
+        <strong>📧 E-mail Loja:</strong> <span id="resEmail"></span>
     </div>
 
     <div id="acoes" style="display:none;">
-        <div class="section-title">Comunicação via E-mail</div>
+        <div class="section-title">Comunicação via E-mail (Com CC)</div>
         <button id="btnReabertura" class="btn-reabertura" onclick="gerarEmail('reabertura')">✅ Enviar E-mail de REABERTURA</button>
         <button id="btnFechamento" class="btn-fechamento" onclick="gerarEmail('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
         
@@ -3586,50 +3583,53 @@ lj1845@rd.com.br"
         const dadosRaw = document.getElementById('dadosLojas').textContent.trim().split('\n');
         
         loja = null;
+        
         for (let linha of dadosRaw) {
-            const [id, nome, regional, emailReg, emailLoja] = linha.split('|');
-            if (id === input) {
-                loja = { id, nome, regional, emailLoja };
+            // O .split('|') quebra a linha na barra vertical
+            // O .map(s => s.trim()) remove espaços invisíveis que estragam a busca
+            const colunas = linha.split('|').map(s => s.trim());
+            
+            if (colunas[0] === input) {
+                loja = { 
+                    id: colunas[0], 
+                    nome: colunas[1], 
+                    regional: colunas[2], 
+                    emailReg: colunas[3], 
+                    emailLoja: colunas[4] 
+                };
                 break;
             }
         }
 
         if (loja) {
-            document.getElementById('resNome').textContent = `${loja.id} - ${loja.nome}`;
+            document.getElementById('resNome').textContent = loja.id + " - " + loja.nome;
             document.getElementById('resReg').textContent = loja.regional;
             document.getElementById('resEmail').textContent = loja.emailLoja;
             document.getElementById('resultBox').style.display = 'block';
             document.getElementById('acoes').style.display = 'block';
             document.querySelectorAll('#acoes button').forEach(b => b.style.display = 'block');
         } else {
-            alert('Filial não encontrada na base.');
+            alert('Filial ' + input + ' não encontrada. Verifique se o formato está: ID|NOME|REGIONAL|EMAIL_REG|EMAIL_LOJA');
         }
     }
 
     function gerarEmail(tipo) {
         if (!loja) return;
         const saudacao = (new Date().getHours() < 12) ? "Bom dia" : "Boa tarde";
+        const emailCC = (loja.emailReg ? loja.emailReg + "; " : "") + "suportemonitoramento@rd.com.br";
+        
         let assunto, corpo;
 
         if (tipo === 'fechamento') {
             assunto = `Suspensão de Serviços - Filial ${loja.id} - ${loja.nome}`;
-            corpo = `Prezados, ${saudacao}!\n\n` +
-                `Encaminhamos este e-mail para informar que os serviços da Filial ${loja.id} – ${loja.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\n` +
-                `Solicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\n` +
-                `Em caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n` +
-                `https://grupordprod.service-now.com/esc\n\n` +
-                `Atenciosamente,\nSuporte monitoramento`;
+            corpo = `Prezados, ${saudacao}!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${loja.id} – ${loja.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\nSolicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\nEm caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento`;
         } else {
             assunto = `Reabertura de Serviços - Filial ${loja.id} - ${loja.nome}`;
-            corpo = `Prezados, ${saudacao}!\n\n` +
-                `Informamos que os serviços da filial ${loja.nome} já se encontram abertos.\n\n` +
-                `Reforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\n` +
-                `Em caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\n` +
-                `https://grupordprod.service-now.com/esc\n\n` +
-                `Atenciosamente,\nSuporte monitoramento`;
+            corpo = `Prezados, ${saudacao}!\n\nInformamos que os serviços da filial ${loja.nome} já se encontram abertos.\n\nReforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\nEm caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento`;
         }
 
-        window.location.href = `mailto:${loja.emailLoja}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+        const mailtoLink = `mailto:${loja.emailLoja}?cc=${encodeURIComponent(emailCC)}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+        window.location.href = mailtoLink;
     }
 
     function abrirForms() {
