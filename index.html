@@ -40,13 +40,77 @@
 
     <div id="acoes" style="display:none;">
         <div class="section-title">Comunicação via E-mail (Com CC)</div>
-        <button id="btnReabertura" class="btn-reabertura" onclick="gerarEmail('reabertura')">✅ Enviar E-mail de REABERTURA</button>
-        <button id="btnFechamento" class="btn-fechamento" onclick="gerarEmail('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
+        <button id="btnReabertura" class="btn-reabertura" style="display:block;" onclick="gerarEmail('reabertura')">✅ Enviar E-mail de REABERTURA</button>
+        <button id="btnFechamento" class="btn-fechamento" style="display:block;" onclick="gerarEmail('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
         
         <div class="section-title">Registro de Logs</div>
-        <button id="btnForms" class="btn-forms" onclick="abrirForms()">📝 Abrir Forms (Preenchimento Automático)</button>
+        <button id="btnForms" class="btn-forms" style="display:block;" onclick="abrirForms()">📝 Abrir Forms (Preenchimento Automático)</button>
     </div>
 </div>
+
+<script>
+    // Armazena os dados da loja selecionada
+    let lojaAtual = null;
+
+    function buscar() {
+        const java = document.getElementById('javaInput').value.trim();
+        const dadosRaw = document.getElementById('dadosLojas').textContent.split('\n');
+        
+        lojaAtual = null;
+        for (let linha of dadosRaw) {
+            const campos = linha.split('|');
+            if (campos[0] === java) {
+                lojaAtual = {
+                    id: campos[0],
+                    nome: campos[1],
+                    regional: campos[2],
+                    emailRegional: campos[3],
+                    emailLoja: campos[4]
+                };
+                break;
+            }
+        }
+
+        if (lojaAtual) {
+            document.getElementById('resNome').innerText = lojaAtual.nome;
+            document.getElementById('resReg').innerText = lojaAtual.regional;
+            document.getElementById('resEmail').innerText = lojaAtual.emailLoja;
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('acoes').style.display = 'block';
+        } else {
+            alert('Filial não encontrada!');
+            document.getElementById('resultBox').style.display = 'none';
+            document.getElementById('acoes').style.display = 'none';
+        }
+    }
+
+    function gerarEmail(tipo) {
+        if (!lojaAtual) return;
+
+        let assunto, corpo;
+        const footer = "\n\nESTE E-MAIL É AUTOMÁTICO, POR FAVOR, NÃO RESPONDA.";
+
+        if (tipo === 'fechamento') {
+            assunto = `Monitoramento Multicanal - Desligamento de Serviços - Filial ${lojaAtual.id}`;
+            corpo = `Prezados, Bom dia!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas).\n\nSolicitamos, por gentileza, que após a normalização do cenário, entrem em contato com o Suporte à Loja por meio do chat para a reativação dos serviços.${footer}`;
+        } else {
+            assunto = `Monitoramento Multicanal - Reativação de Serviços - Filial ${lojaAtual.id}`;
+            corpo = `Prezados,\n\nInformamos que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram reativados em nosso sistema após a validação da normalização dos fluxos de atendimento.${footer}`;
+        }
+
+        const destinatario = lojaAtual.emailLoja;
+        const cc = lojaAtual.emailRegional;
+        
+        window.location.href = `mailto:${destinatario}?cc=${cc}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    }
+
+    function abrirForms() {
+        if (!lojaAtual) return;
+        // Coloque aqui o link do seu Microsoft Forms
+        const urlForms = "https://forms.office.com/r/SEU_LINK_AQUI"; 
+        window.open(urlForms, '_blank');
+    }
+</script>
 
 <script id="dadosLojas" type="text/plain">
 6|SP PAULISTA A|CARLA GABRIELI BORGES|carlborges@rd.com.br|LJ0006@rd.com.br
@@ -3572,73 +3636,6 @@ lj1845@rd.com.br"
 5410|CAMARAGIBE 3|IANNA GOMES BORGES COELHO DA SILVA|igborges@rd.com.br|ds2623@rd.com.br
 5345|ARAPIRACA 4|ANDREISA CRISTINA DA SILVA RIBEIRO|ancribeiro@rd.com.br|ds2574@rd.com.br
 5505|SAO VICENTE D|GABRIELA CRISTINA AZEVEDO|gcazevedo@rdsaude.com.br|lj1920@rd.com.br
-
-</script>
-
-<script>
-    let loja = null;
-
-    function buscar() {
-        const input = document.getElementById('javaInput').value.trim();
-        const dadosRaw = document.getElementById('dadosLojas').textContent.trim().split('\n');
-        
-        loja = null;
-        
-        for (let linha of dadosRaw) {
-            // O .split('|') quebra a linha na barra vertical
-            // O .map(s => s.trim()) remove espaços invisíveis que estragam a busca
-            const colunas = linha.split('|').map(s => s.trim());
-            
-            if (colunas[0] === input) {
-                loja = { 
-                    id: colunas[0], 
-                    nome: colunas[1], 
-                    regional: colunas[2], 
-                    emailReg: colunas[3], 
-                    emailLoja: colunas[4] 
-                };
-                break;
-            }
-        }
-
-        if (loja) {
-            document.getElementById('resNome').textContent = loja.id + " - " + loja.nome;
-            document.getElementById('resReg').textContent = loja.regional;
-            document.getElementById('resEmail').textContent = loja.emailLoja;
-            document.getElementById('resultBox').style.display = 'block';
-            document.getElementById('acoes').style.display = 'block';
-            document.querySelectorAll('#acoes button').forEach(b => b.style.display = 'block');
-        } else {
-            alert('Filial ' + input + ' não encontrada. Verifique se o formato está: ID|NOME|REGIONAL|EMAIL_REG|EMAIL_LOJA');
-        }
-    }
-
-    function gerarEmail(tipo) {
-        if (!loja) return;
-        const saudacao = (new Date().getHours() < 12) ? "Bom dia" : "Boa tarde";
-        const emailCC = (loja.emailReg ? loja.emailReg + "; " : "") + "suportemonitoramento@rd.com.br";
-        
-        let assunto, corpo;
-
-        if (tipo === 'fechamento') {
-            assunto = `Suspensão de Serviços - Filial ${loja.id} - ${loja.nome}`;
-            corpo = `Prezados, ${saudacao}!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${loja.id} – ${loja.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\nSolicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\nEm caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento`;
-        } else {
-            assunto = `Reabertura de Serviços - Filial ${loja.id} - ${loja.nome}`;
-            corpo = `Prezados, ${saudacao}!\n\nInformamos que os serviços da filial ${loja.nome} já se encontram abertos.\n\nReforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\nEm caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento`;
-        }
-
-        const mailtoLink = `mailto:${loja.emailLoja}?cc=${encodeURIComponent(emailCC)}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-        window.location.href = mailtoLink;
-    }
-
-    function abrirForms() {
-        const baseUrl = "https://forms.office.com/Pages/ResponsePage.aspx?id=e9uigTa1BUmke22JK9LyEFSCpIb5Oi1HiKXx1VE526tUNkxCQkRGOTI4Nk5NQTk4MUNTSzdVWDdFSi4u";
-        const preFill = `&rce89a878531d4e028f804245979f4f46=${loja.id}` + 
-                        `&r683510e159754f7380f7697193988691=["COMPRE E RETIRE FECHADO","MICRO POLO FECHADO","IFOOD FECHADO"]` +
-                        `&r8d886971a81d4b689976779774653f57=Grafana - Filiais Isoladas/Sem contato`;
-        window.open(baseUrl + preFill, '_blank');
-    }
 </script>
 
 </body>
