@@ -49,12 +49,11 @@
 </div>
 
 <script>
-    // Armazena os dados da loja selecionada
     let lojaAtual = null;
 
     function buscar() {
         const java = document.getElementById('javaInput').value.trim();
-        const dadosRaw = document.getElementById('dadosLojas').textContent.split('\n');
+        const dadosRaw = document.getElementById('dadosLojas').textContent.trim().split('\n');
         
         lojaAtual = null;
         for (let linha of dadosRaw) {
@@ -72,7 +71,7 @@
         }
 
         if (lojaAtual) {
-            document.getElementById('resNome').innerText = lojaAtual.nome;
+            document.getElementById('resNome').innerText = lojaAtual.id + " - " + lojaAtual.nome;
             document.getElementById('resReg').innerText = lojaAtual.regional;
             document.getElementById('resEmail').innerText = lojaAtual.emailLoja;
             document.getElementById('resultBox').style.display = 'block';
@@ -88,14 +87,14 @@
         if (!lojaAtual) return;
 
         let assunto, corpo;
-        const footer = "\n\nESTE E-MAIL É AUTOMÁTICO, POR FAVOR, NÃO RESPONDA.";
+        const automatico = "\n\nESTE E-MAIL É AUTOMÁTICO, POR FAVOR, NÃO RESPONDA.";
 
         if (tipo === 'fechamento') {
             assunto = `Monitoramento Multicanal - Desligamento de Serviços - Filial ${lojaAtual.id}`;
-            corpo = `Prezados, Bom dia!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas).\n\nSolicitamos, por gentileza, que após a normalização do cenário, entrem em contato com o Suporte à Loja por meio do chat para a reativação dos serviços.${footer}`;
+            corpo = `Prezados, Bom dia!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\nSolicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\nEm caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
         } else {
             assunto = `Monitoramento Multicanal - Reativação de Serviços - Filial ${lojaAtual.id}`;
-            corpo = `Prezados,\n\nInformamos que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram reativados em nosso sistema após a validação da normalização dos fluxos de atendimento.${footer}`;
+            corpo = `Prezados, Boa tarde!\n\nInformamos que os serviços da filial ${lojaAtual.nome} já se encontram abertos.\n\nReforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\nEm caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
         }
 
         const destinatario = lojaAtual.emailLoja;
@@ -105,9 +104,7 @@
     }
 
     function abrirForms() {
-        if (!lojaAtual) return;
-        // Coloque aqui o link do seu Microsoft Forms
-        const urlForms = "https://forms.office.com/r/SEU_LINK_AQUI"; 
+        const urlForms = "https://forms.office.com/Pages/ResponsePage.aspx?id=e9uigTa1BUmke22JK9LyEFSCpIb5Oi1HiKXx1VE526tUNkxCQkRGOTI4Nk5NQTk4MUNTSzdVWDdFSi4u"; 
         window.open(urlForms, '_blank');
     }
 </script>
@@ -3635,7 +3632,7 @@ lj1845@rd.com.br"
 5479|SANTA GERTRUDES A|JORGE LUIS DA SILVA BUENO|jlbueno@rd.com.br|ds1911@rd.com.br
 5410|CAMARAGIBE 3|IANNA GOMES BORGES COELHO DA SILVA|igborges@rd.com.br|ds2623@rd.com.br
 5345|ARAPIRACA 4|ANDREISA CRISTINA DA SILVA RIBEIRO|ancribeiro@rd.com.br|ds2574@rd.com.br
-5505|SAO VICENTE D|GABRIELA CRISTINA AZEVEDO|gcazevedo@rdsaude.com.br|lj1920@rd.com.br
+5505|SAO VICENTE D|GABRIELA CRISTINA AZEVEDO|gcazevedo@rdsaude.com.br|lj1920@rd.com.b
 </script>
 
 </body>
