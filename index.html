@@ -11,12 +11,11 @@
         input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 18px; text-align: center; outline: none; }
         input:focus { border-color: #003366; }
         
-        button { width: 100%; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 10px; transition: 0.3s; display: none; }
-        .btn-search { background-color: #003366; color: white; display: block; }
-        
-        .btn-reabertura { background-color: #808000; color: white; }
-        .btn-fechamento { background-color: #FF8C00; color: white; }
-        .btn-forms { background-color: #ffffff; color: #333; border: 1px solid #ccc; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 10px; transition: 0.3s; }
+        .btn-search { background-color: #003366; color: white; }
+        .btn-reabertura { background-color: #808000; color: white; display: none; }
+        .btn-fechamento { background-color: #FF8C00; color: white; display: none; }
+        .btn-forms { background-color: #ffffff; color: #333; border: 1px solid #ccc; display: none; }
         
         button:hover { opacity: 0.85; transform: scale(1.01); }
         .result-box { margin-top: 20px; padding: 20px; border-left: 5px solid #003366; background: #f8f9fa; display: none; text-align: left; line-height: 1.6; }
@@ -30,7 +29,7 @@
     <p class="subtitle">Gestão de Alertas e Erros Sistêmicos</p>
     
     <input type="text" id="javaInput" placeholder="Digite o Código JAVA">
-    <button class="btn-search" style="display:block;" onclick="buscar()">🔍 Consultar Unidade</button>
+    <button class="btn-search" onclick="buscar()">🔍 Consultar Unidade</button>
 
     <div id="resultBox" class="result-box">
         <strong>📍 Filial:</strong> <span id="resNome"></span><br>
@@ -39,17 +38,20 @@
     </div>
 
     <div id="acoes" style="display:none;">
-        <div class="section-title">Comunicação via E-mail (Com CC)</div>
-        <button id="btnReabertura" class="btn-reabertura" style="display:block;" onclick="gerarEmail('reabertura')">✅ Enviar E-mail de REABERTURA</button>
-        <button id="btnFechamento" class="btn-fechamento" style="display:block;" onclick="gerarEmail('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
+        <div class="section-title">Comunicação via E-mail (CC: Regional + Suporte)</div>
+        <button id="btnReabertura" class="btn-reabertura" onclick="gerarEmail('reabertura')">✅ Enviar E-mail de REABERTURA</button>
+        <button id="btnFechamento" class="btn-fechamento" onclick="gerarEmail('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
         
         <div class="section-title">Registro de Logs</div>
-        <button id="btnForms" class="btn-forms" style="display:block;" onclick="abrirForms()">📝 Abrir Forms (Preenchimento Automático)</button>
+        <button id="btnForms" class="btn-forms" onclick="abrirForms()">📝 Abrir Forms (Preenchimento Automático)</button>
     </div>
 </div>
 
 <script>
     let lojaAtual = null;
+    
+    // E-mail atualizado conforme solicitado
+    const emailMonitoramentoFixo = "suportemonitoramento@rdsaude.com.br";
 
     function buscar() {
         const java = document.getElementById('javaInput').value.trim();
@@ -63,8 +65,8 @@
                     id: campos[0],
                     nome: campos[1],
                     regional: campos[2],
-                    emailRegional: campos[3],
-                    emailLoja: campos[4]
+                    emailRegional: campos[3].trim(),
+                    emailLoja: campos[4].trim()
                 };
                 break;
             }
@@ -76,9 +78,11 @@
             document.getElementById('resEmail').innerText = lojaAtual.emailLoja;
             document.getElementById('resultBox').style.display = 'block';
             document.getElementById('acoes').style.display = 'block';
+            document.getElementById('btnReabertura').style.display = 'block';
+            document.getElementById('btnFechamento').style.display = 'block';
+            document.getElementById('btnForms').style.display = 'block';
         } else {
             alert('Filial não encontrada!');
-            document.getElementById('resultBox').style.display = 'none';
             document.getElementById('acoes').style.display = 'none';
         }
     }
@@ -98,7 +102,9 @@
         }
 
         const destinatario = lojaAtual.emailLoja;
-        const cc = lojaAtual.emailRegional;
+        
+        // Cópia enviada para o Regional (da lista) + Suporte Monitoramento (fixo)
+        const cc = `${lojaAtual.emailRegional}; ${emailMonitoramentoFixo}`;
         
         window.location.href = `mailto:${destinatario}?cc=${cc}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
     }
@@ -3632,7 +3638,7 @@ lj1845@rd.com.br"
 5479|SANTA GERTRUDES A|JORGE LUIS DA SILVA BUENO|jlbueno@rd.com.br|ds1911@rd.com.br
 5410|CAMARAGIBE 3|IANNA GOMES BORGES COELHO DA SILVA|igborges@rd.com.br|ds2623@rd.com.br
 5345|ARAPIRACA 4|ANDREISA CRISTINA DA SILVA RIBEIRO|ancribeiro@rd.com.br|ds2574@rd.com.br
-5505|SAO VICENTE D|GABRIELA CRISTINA AZEVEDO|gcazevedo@rdsaude.com.br|lj1920@rd.com.b
+5505|SAO VICENTE D|GABRIELA CRISTINA AZEVEDO|gcazevedo@rdsaude.com.br|lj1920@rd.com.br
 </script>
 
 </body>
