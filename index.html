@@ -49,9 +49,14 @@
 
 <script>
     let lojaAtual = null;
-    
-    // E-mail atualizado conforme solicitado
-    const emailMonitoramentoFixo = "suportemonitoramento@rdsaude.com.br";
+    const emailSuporteFixo = "monitoramulticanal@rdsaude.com.br";
+
+    function getSaudacao() {
+        const hora = new Date().getHours();
+        if (hora >= 0 && hora < 12) return "Bom dia";
+        if (hora >= 12 && hora < 18) return "Boa tarde";
+        return "Boa noite";
+    }
 
     function buscar() {
         const java = document.getElementById('javaInput').value.trim();
@@ -90,21 +95,20 @@
     function gerarEmail(tipo) {
         if (!lojaAtual) return;
 
+        const saudacao = getSaudacao();
         let assunto, corpo;
         const automatico = "\n\nESTE E-MAIL É AUTOMÁTICO, POR FAVOR, NÃO RESPONDA.";
 
         if (tipo === 'fechamento') {
             assunto = `Monitoramento Multicanal - Desligamento de Serviços - Filial ${lojaAtual.id}`;
-            corpo = `Prezados, Bom dia!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\nSolicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\nEm caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
+            corpo = `Prezados, ${saudacao}!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas), bem como à ausência de registros de atendimentos no TC/TR na última hora.\n\nSolicitamos, por gentileza, que após a normalização do cenário, para a reativação dos serviços, entrem em contato com o Suporte à Loja por meio do chat.\n\nEm caso de dúvidas, permanecemos à disposição pelos canais de Suporte à Loja, disponíveis 24 horas por dia, todos os dias da semana, por meio do link abaixo:\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
         } else {
             assunto = `Monitoramento Multicanal - Reativação de Serviços - Filial ${lojaAtual.id}`;
-            corpo = `Prezados, Boa tarde!\n\nInformamos que os serviços da filial ${lojaAtual.nome} já se encontram abertos.\n\nReforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\nEm caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
+            corpo = `Prezados, ${saudacao}!\n\nInformamos que os serviços da filial ${lojaAtual.nome} já se encontram abertos.\n\nReforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\nEm caso de dúvidas, permanecemos à disposição via chat, no link abaixo:\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
         }
 
         const destinatario = lojaAtual.emailLoja;
-        
-        // Cópia enviada para o Regional (da lista) + Suporte Monitoramento (fixo)
-        const cc = `${lojaAtual.emailRegional}; ${emailMonitoramentoFixo}`;
+        const cc = `${lojaAtual.emailRegional}; ${emailSuporteFixo}`;
         
         window.location.href = `mailto:${destinatario}?cc=${cc}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
     }
