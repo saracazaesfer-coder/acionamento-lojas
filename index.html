@@ -1,3 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Unificado - Monitoramento RD</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        :root { 
+            --verde-oliva: #6b705c; 
+            --roxo: #4a4e69; 
+            --laranja: #f08047; 
+            --bg: #f8f9fa; 
+            --white: #ffffff;
+            --text: #2d3436;
+            --azul-rd: #003366;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background-color: var(--bg); 
+            margin: 0; padding: 20px; 
+            color: var(--text);
+        }
+
+        .container { width: 100%; max-width: 1000px; margin: 0 auto; }
+
+        /* Sistema de Abas */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+        .tab-btn { 
+            padding: 12px 25px; border: none; background: #e0e0e0; cursor: pointer; 
+            border-radius: 8px 8px 0 0; font-weight: bold; transition: 0.3s; 
+        }
+        .tab-btn.active { background: var(--roxo); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Cards */
+        .card { 
+            background: var(--white); 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            margin-bottom: 20px; 
+        }
+
+        /* Registro de Serviços */
+        .dashboard-grid { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+        .stat-box { 
+            background: var(--laranja); color: white; border-radius: 12px; padding: 20px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .stat-box .number-bg { background: white; color: var(--text); width: 100%; padding: 15px 0; border-radius: 8px; font-size: 42px; font-weight: bold; text-align: center; margin-top: 10px; }
+        
+        .form-content { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 11px; font-weight: 700; color: #636e72; margin-bottom: 5px; text-transform: uppercase; }
+        input, select { padding: 10px; border: 1px solid #dfe6e9; border-radius: 6px; font-size: 14px; outline: none; }
+
+        .btn-confirm { grid-column: span 2; background: var(--verde-oliva); color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 5px;}
+        .btn-confirm:hover { filter: brightness(1.1); }
+
+        /* Farmácias Isoladas */
+        .search-container { text-align: center; }
+        .big-input { width: 100%; padding: 15px; font-size: 20px; text-align: center; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        .btn-search { background: var(--azul-rd); color: white; width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .result-box { margin-top: 20px; padding: 20px; border-left: 5px solid var(--azul-rd); background: #f8f9fa; display: none; text-align: left; line-height: 1.6; }
+        
+        .btn-mail-action { width: 100%; padding: 12px; border: none; border-radius: 6px; color: white; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.3s; }
+        .bg-reabre { background: #808000; }
+        .bg-fecha { background: #FF8C00; }
+        .bg-forms { background: #ffffff; color: #333; border: 1px solid #ccc; }
+        .btn-mail-action:hover { opacity: 0.8; transform: scale(1.01); }
+
+        /* Tabela */
+        .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th { background: var(--roxo); color: white; padding: 12px; font-size: 11px; text-transform: uppercase; }
+        tbody td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
+        tbody tr:hover { background: #f9f9f9; }
+
+        .section-title { font-size: 10px; font-weight: bold; color: #999; text-transform: uppercase; margin-top: 15px; text-align: left; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'registro')">📋 Registro 60/120</button>
+        <button class="tab-btn" onclick="openTab(event, 'isoladas')">🔍 Farmácias Isoladas</button>
+    </div>
+
+    <div id="registro" class="tab-content active">
+        <div class="card dashboard-grid">
+            <div class="stat-box">
+                <span>Total Global (Logs)</span>
+                <div class="number-bg" id="counter">0</div>
+            </div>
+            <div class="form-content">
+                <div class="input-group"><label>Operador</label><input type="text" id="op" value="Sara"></div>
+                <div class="input-group"><label>Filial</label><input type="number" id="fi" value="1256"></div>
+                <div class="input-group">
+                    <label>Serviço</label>
+                    <select id="sv"><option>Turbo 60</option><option>Turbo 120</option></select>
+                </div>
+                <div class="input-group">
+                    <label>Motivo</label>
+                    <select id="mt"><option>Corrida não aceita > 2</option><option>Indisponibilidade</option><option>Ajuste Operacional</option></select>
+                </div>
+                <button class="btn-confirm" id="main-btn" onclick="sendData()">Confirmar Registro Global</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-controls">
+                <h3 style="margin:0;">Histórico de Atividade</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="enviarEmailRelatorio()" style="cursor:pointer; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">📧 Notificar</button>
+                    <button onclick="exportData()" style="cursor:pointer; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">📥 Baixar CSV</button>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>DATA/HORA</th>
+                        <th>FILIAL</th>
+                        <th>SERVIÇO</th>
+                        <th>MOTIVO</th>
+                        <th>OPERADOR</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="isoladas" class="tab-content">
+        <div class="card search-container">
+            <h2 style="color: var(--azul-rd); margin-bottom: 5px;">Farmácias Isoladas</h2>
+            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">Gestão de Alertas e Erros Sistêmicos</p>
+            
+            <input type="text" id="javaInput" class="big-input" placeholder="Digite o Código JAVA">
+            <button class="btn-search" onclick="buscarLoja()">🔍 Consultar Unidade</button>
+
+            <div id="resultBox" class="result-box">
+                <strong>📍 Filial:</strong> <span id="resNome"></span><br>
+                <strong>🏢 Regional:</strong> <span id="resReg"></span><br>
+                <strong>📧 E-mail Loja:</strong> <span id="resEmail"></span>
+                
+                <div class="section-title">Comunicação via E-mail (CC: Regional + Suporte)</div>
+                <button class="btn-mail-action bg-reabre" onclick="gerarEmailIsolada('reabertura')">✅ Enviar E-mail de REABERTURA</button>
+                <button class="btn-mail-action bg-fecha" onclick="gerarEmailIsolada('fechamento')">🚫 Enviar E-mail de FECHAMENTO</button>
+                
+                <div class="section-title">Registro de Logs</div>
+                <button class="btn-mail-action bg-forms" onclick="abrirForms()">📝 Abrir Forms (Preenchimento Automático)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="dadosLojas" type="text/plain">
+// === COLOQUE AS FILIAIS ABAIXO (Mantenha o formato ID|NOME|REGIONAL|EMAIL_REG|EMAIL_LOJA) ===
 6|SP PAULISTA A|CARLA GABRIELI BORGES|carlborges@rd.com.br|LJ0006@rd.com.br
 7|SÃƒO CARLOS A|JORGE LUIS DA SILVA BUENO|jlbueno@rd.com.br|LJ0007@rd.com.br
 8|ARARAQUARA A|JORGE LUIS DA SILVA BUENO|jlbueno@rd.com.br|LJ0008@rd.com.br
@@ -3521,3 +3686,154 @@ lj1845@rd.com.br"
 5410|CAMARAGIBE 3|IANNA GOMES BORGES COELHO DA SILVA|igborges@rd.com.br|ds2623@rd.com.br
 5345|ARAPIRACA 4|ANDREISA CRISTINA DA SILVA RIBEIRO|ancribeiro@rd.com.br|ds2574@rd.com.br
 5505|SAO VICENTE D|GABRIELA CRISTINA AZEVEDO|gcazevedo@rdsaude.com.br|lj1920@rd.com.br
+
+// =========================================================================================
+</script>
+
+<script>
+    // --- LÓGICA DE NAVEGAÇÃO ENTRE ABAS ---
+    function openTab(evt, tabName) {
+        let contents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < contents.length; i++) contents[i].style.display = "none";
+        let btns = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < btns.length; i++) btns[i].classList.remove("active");
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.classList.add("active");
+    }
+
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyCwenDkxrlHTTsS0NIxrF0AkK-bvM8HB4A",
+        authDomain: "registro-de-contigencia.firebaseapp.com",
+        databaseURL: "https://registro-de-contigencia-default-rtdb.firebaseio.com",
+        projectId: "registro-de-contigencia",
+        storageBucket: "registro-de-contigencia.firebasestorage.app",
+        messagingSenderId: "75940460409",
+        appId: "1:75940460409:web:59ad9ac9b61be295f8e1a8",
+        measurementId: "G-TBTMWBF823"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Sincronização em Tempo Real (Aba 1)
+    db.ref('logs').on('value', (snap) => {
+        const body = document.getElementById('table-body');
+        const count = document.getElementById('counter');
+        body.innerHTML = ""; let total = 0;
+        snap.forEach((child) => {
+            const v = child.val();
+            total++;
+            const row = `<tr>
+                <td>${v.ts}</td>
+                <td>${v.fi}</td>
+                <td>${v.sv}</td>
+                <td>${v.mt}</td>
+                <td><b>${v.op}</b></td>
+            </tr>`;
+            body.insertAdjacentHTML('afterbegin', row);
+        });
+        count.innerText = total;
+    });
+
+    function sendData() {
+        const b = document.getElementById('main-btn');
+        b.disabled = true; b.innerText = "REGISTRANDO...";
+        const payload = {
+            ts: new Date().toLocaleString('pt-BR'),
+            op: document.getElementById('op').value,
+            fi: document.getElementById('fi').value,
+            sv: document.getElementById('sv').value,
+            mt: document.getElementById('mt').value
+        };
+        db.ref('logs').push(payload).then(() => {
+            b.disabled = false; b.innerText = "Confirmar Registro Global";
+        });
+    }
+
+    // --- LÓGICA FARMÁCIAS ISOLADAS (Aba 2) ---
+    let lojaAtual = null;
+    const emailSuporteFixo = "suportemonitoramento@rdsaude.com.br";
+
+    function buscarLoja() {
+        const java = document.getElementById('javaInput').value.trim();
+        const dadosRaw = document.getElementById('dadosLojas').textContent.trim().split('\n');
+        
+        lojaAtual = null;
+        for (let linha of dadosRaw) {
+            if (linha.startsWith('//') || linha.trim() === "") continue;
+            const campos = linha.split('|');
+            if (campos[0] === java) {
+                lojaAtual = {
+                    id: campos[0],
+                    nome: campos[1],
+                    regional: campos[2],
+                    emailRegional: campos[3].trim(),
+                    emailLoja: campos[4].trim()
+                };
+                break;
+            }
+        }
+
+        if (lojaAtual) {
+            document.getElementById('resNome').innerText = lojaAtual.id + " - " + lojaAtual.nome;
+            document.getElementById('resReg').innerText = lojaAtual.regional;
+            document.getElementById('resEmail').innerText = lojaAtual.emailLoja;
+            document.getElementById('resultBox').style.display = 'block';
+        } else {
+            alert('Filial não encontrada!');
+            document.getElementById('resultBox').style.display = 'none';
+        }
+    }
+
+    function gerarEmailIsolada(tipo) {
+        if (!lojaAtual) return;
+        const hora = new Date().getHours();
+        const saudacao = (hora >= 0 && hora < 12) ? "Bom dia" : (hora >= 12 && hora < 18) ? "Boa tarde" : "Boa noite";
+        const automatico = "\n\nESTE E-MAIL É AUTOMÁTICO, POR FAVOR, NÃO RESPONDA.";
+        let assunto, corpo;
+
+        if (tipo === 'fechamento') {
+            assunto = `Monitoramento Multicanal - Desligamento de Serviços - Filial ${lojaAtual.id}`;
+            corpo = `Prezados, ${saudacao}!\n\nEncaminhamos este e-mail para informar que os serviços da Filial ${lojaAtual.id} – ${lojaAtual.nome} foram desligados devido à identificação de um erro sistêmico em nosso radar (farmácias isoladas).\n\nSolicitamos, por gentileza, que após a normalização do cenário, entrem em contato com o Suporte à Loja via chat.\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
+        } else {
+            assunto = `Monitoramento Multicanal - Reativação de Serviços - Filial ${lojaAtual.id}`;
+            corpo = `Prezados, ${saudacao}!\n\nInformamos que os serviços da filial ${lojaAtual.nome} já se encontram abertos.\n\nReforçamos que a abertura ou o fechamento de serviços deve ser realizada exclusivamente por meio do chat de Suporte de loja.\n\nhttps://grupordprod.service-now.com/esc\n\nAtenciosamente,\nSuporte monitoramento.${automatico}`;
+        }
+
+        window.location.href = `mailto:${lojaAtual.emailLoja}?cc=${lojaAtual.emailRegional}; ${emailSuporteFixo}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    }
+
+    function abrirForms() {
+        window.open("https://forms.office.com/Pages/ResponsePage.aspx?id=e9uigTa1BUmke22JK9LyEFSCpIb5Oi1HiKXx1VE526tUNkxCQkRGOTI4Nk5NQTk4MUNTSzdVWDdFSi4u", '_blank');
+    }
+
+    // --- FUNÇÕES DE EXPORTAÇÃO (HISTÓRICO) ---
+    function enviarEmailRelatorio() {
+        const dataHoje = new Date().toLocaleDateString('pt-BR');
+        let relatorio = "";
+        document.querySelectorAll("#table-body tr").forEach(linha => {
+            const col = linha.querySelectorAll("td");
+            if (col[0].innerText.includes(dataHoje)) {
+                relatorio += `- Filial: ${col[1].innerText} | Serviço: ${col[2].innerText} | Motivo: ${col[3].innerText}\n`;
+            }
+        });
+        if (!relatorio) return alert("Sem registros hoje!");
+        window.location.href = `mailto:FMLopes@rdsaude.com.br?cc=suportemonitoramento@rdsaude.com.br&subject=Relatorio ${dataHoje}&body=${encodeURIComponent(relatorio)}`;
+    }
+
+    function exportData() {
+        db.ref('logs').once('value', (snap) => {
+            let csv = "\uFEFFData;Filial;Serviço;Motivo;Operador\n";
+            snap.forEach(c => {
+                const d = c.val();
+                csv += `${d.ts};${d.fi};${d.sv};${d.mt};${d.op}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "Relatorio_Monitoramento.csv"; a.click();
+        });
+    }
+</script>
+</body>
+</html>
